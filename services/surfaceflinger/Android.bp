@@ -36,6 +36,8 @@ cc_defaults {
         "-Wthread-safety-analysis",
         "-Wunreachable-code",
         "-Wunused",
+        "-O3",
+        "-g0"
     ],
 }
 
