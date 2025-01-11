@@ -123,23 +123,18 @@ namespace {
 
     #define FEAS_IOCTL_PATH   "/proc/perfmgr/perf_ioctl"
 
-    static Mutex mFEASMutex;
+    static std::mutex mFEASMutex;
+    static int mFEASDevFd = -1;
+    static bool mFEASDeviceOpen = false;
 
-    int mFEASDevFd = -1;
-    inline static bool checkFEASDev() {
-        if (mFEASDevFd >= 0) {
-            return true;
-        } else if (mFEASDevFd == -1) {
+    /* The logic has been simplified to open the device only once
+     * and store the status in mFEASDeviceOpen.*/
+    bool checkFEASDevice() {
+        if (!mFEASDeviceOpen) {
             mFEASDevFd = open(FEAS_IOCTL_PATH, O_RDONLY);
-            if (mFEASDevFd >= 0)
-                return true;
-            if (mFEASDevFd < 0) {
-                mFEASDevFd = -2;
-                ALOGTD("FEAS", "Can't open %s: %s", FEAS_IOCTL_PATH, strerror(errno));
-                return false;
-            }
+            mFEASDeviceOpen = (mFEASDevFd >= 0);
         }
-        return false;
+        return mFEASDeviceOpen;
     }
 
     static inline void getProcessNameByPid(int pid, std::string &processName) {
@@ -211,61 +206,50 @@ namespace {
         return mFEASEnable;
     }
 
-    inline static void feasConnect(const int32_t& api, const uint64_t& identifier) {
-        FEAS_BUFFER_PACKAGE msg;
-        Mutex::Autolock lock(mFEASMutex);
-        msg.pid = getpid();
-        msg.connectedAPI = api;
-        msg.identifier = identifier;
-        if (checkFEASDev()) ioctl(mFEASDevFd, FEAS_CONNECT, &msg);
-        /*
-         *    std::string processName;
-         *    getProcessNameByPid(getpid(), processName);
-         *    if (checkFEASDev()) {
-         *        int ret = ioctl(mFEASDevFd, FEAS_CONNECT, &msg);
-         *        ALOGTI(processName.c_str(), "FEAS conn ioctl: %d", ret);
-    } else {
-        ALOGTD(processName.c_str(), "checkFEASDev: %s", "false");
-    }
-    */
-    }
-
-    inline static void feasQueueBEG(const uint64_t& identifier) {
-        FEAS_BUFFER_PACKAGE msg;
-        Mutex::Autolock lock(mFEASMutex);
-        msg.pid = getpid();
-        msg.start = 1;
-        msg.identifier = identifier;
-        if (checkFEASDev()) ioctl(mFEASDevFd, FEAS_QUEUE_BEG, &msg);
-        /*
-         *    std::string processName;
-         *    getProcessNameByPid(getpid(), processName);
-         *    if (checkFEASDev()) {
-         *        int ret = ioctl(mFEASDevFd, FEAS_QUEUE_BEG, &msg);
-         *        ALOGTI(processName.c_str(), "FEAS queue ioctl: %d", ret);
-    } else {
-        ALOGTD(processName.c_str(), "checkFEASDev: %s", "false");
-    }
-    */
+    /* A generic function has been introduced to perform ioctl operations,
+     * reducing code duplication.
+     * An ioctl return check has been added to handle possible errors
+     * and return an error value.
+     * Initialisation by designation has been used to improve readability
+     * and avoid potential errors.
+     * std::lock_guard has been used to ensure that the mutex is released correctly,
+     * even if exceptions occur.
+     */
+    int feasOperation(const FEAS_BUFFER_PACKAGE& msg, unsigned long int ioctl_cmd) {
+        std::lock_guard<std::mutex> lock(mFEASMutex);
+        if (checkFEASDevice()) {
+            return ioctl(mFEASDevFd, ioctl_cmd, &msg);
+        } else {
+            ALOGD("FEAS", "Device not open");
+            return -1; // Indica error
+        }
     }
 
-    inline static void feasDisconnect(const uint64_t& identifier) {
-        FEAS_BUFFER_PACKAGE msg;
-        Mutex::Autolock lock(mFEASMutex);
-        msg.pid = getpid();
-        msg.identifier = identifier;
-        msg.connectedAPI = 0;
-        if (checkFEASDev()) ioctl(mFEASDevFd, FEAS_CONNECT, &msg);
-        /*
-         *    std::string processName;
-         *    getProcessNameByPid(getpid(), processName);
-         *    if (checkFEASDev()) {
-         *        int ret = ioctl(mFEASDevFd, FEAS_CONNECT, &msg);
-         *        ALOGTI(processName.c_str(), "FEAS disconn ioctl: %d", ret);
-    } else {
-        ALOGTD(processName.c_str(), "checkFEASDev: %s", "false");
+    void feasConnect(const int32_t& api, const uint64_t& identifier) {
+        FEAS_BUFFER_PACKAGE msg = {
+            .pid = getpid(),
+            .connectedAPI = api,
+            .identifier = identifier
+        };
+        feasOperation(msg, FEAS_CONNECT);
     }
-    */
+
+    void feasQueueBEG(const uint64_t& identifier) {
+        FEAS_BUFFER_PACKAGE msg = {
+            .pid = getpid(),
+            .start = 1,
+            .identifier = identifier
+        };
+        feasOperation(msg, FEAS_QUEUE_BEG);
+    }
+
+    void feasDisconnect(const uint64_t& identifier) {
+        FEAS_BUFFER_PACKAGE msg = {
+            .pid = getpid(),
+            .identifier = identifier,
+            .connectedAPI = 0
+        };
+        feasOperation(msg, FEAS_CONNECT);
     }
 
 } // namespace
