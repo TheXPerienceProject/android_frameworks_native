@@ -134,9 +134,9 @@ namespace {
             mFEASDevFd = open(FEAS_IOCTL_PATH, O_RDONLY);
             mFEASDeviceOpen = (mFEASDevFd >= 0);
             if (mFEASDeviceOpen) {
-                ALOGD("FEAS", "FEAS device opened successfully");
+                ALOGD("FEAS: device opened successfully");
             } else {
-                ALOGD("FEAS", "Failed to open FEAS device at %s: %s", FEAS_IOCTL_PATH, strerror(errno));
+                ALOGD("FEAS: Failed to open FEAS device at %s: %s", FEAS_IOCTL_PATH, strerror(errno));
             }
         }
         return mFEASDeviceOpen;
@@ -225,7 +225,7 @@ namespace {
         if (checkFEASDevice()) {
             return ioctl(mFEASDevFd, ioctl_cmd, &msg);
         } else {
-            ALOGD("FEAS", "Device not open");
+            ALOGD("FEAS: Device not open");
             return -1; // Indica error
         }
     }
