@@ -255,41 +255,35 @@ namespace {
         }
     }
 
-    void feasConnect(const int32_t& api, const uint64_t& identifier);
-    void feasQueueBEG(const uint64_t& identifier);
-    void feasDisconnect(const uint64_t& identifier);
+    void feasConnect(const int32_t& api, const uint64_t& identifier) {
+        FEAS_BUFFER_PACKAGE msg = {
+            .pid = static_cast<__u32>(getpid()),
+            .connectedAPI = api,
+            .frame_id = 0, // Initialize frame_id
+            .identifier = identifier
+        };
+        feasOperation(msg, FEAS_CONNECT);
+    }
+
+    void feasQueueBEG(const uint64_t& identifier) {
+        FEAS_BUFFER_PACKAGE msg = {
+            .pid = static_cast<__u32>(getpid()),
+            .start = 1,
+            .identifier = identifier
+        };
+        feasOperation(msg, FEAS_QUEUE_BEG);
+    }
+
+    void feasDisconnect(const uint64_t& identifier) {
+        FEAS_BUFFER_PACKAGE msg = {
+            .pid = static_cast<__u32>(getpid()),
+            .connectedAPI = 0,
+            .identifier = identifier,
+        };
+        feasOperation(msg, FEAS_CONNECT);
+    }
+
 } // namespace
-
-/* still feas */
-
-void feasConnect(const int32_t& api, const uint64_t& identifier) {
-    FEAS_BUFFER_PACKAGE msg = {
-        .pid = static_cast<__u32>(getpid()),
-        .connectedAPI = api,
-        .frame_id = 0, // Initialize frame_id
-        .identifier = identifier
-    };
-    feasOperation(msg, FEAS_CONNECT);
-}
-
-void feasQueueBEG(const uint64_t& identifier) {
-    FEAS_BUFFER_PACKAGE msg = {
-        .pid = static_cast<__u32>(getpid()),
-        .start = 1,
-        .identifier = identifier
-    };
-    feasOperation(msg, FEAS_QUEUE_BEG);
-}
-
-void feasDisconnect(const uint64_t& identifier) {
-    FEAS_BUFFER_PACKAGE msg = {
-        .pid = static_cast<__u32>(getpid()),
-        .identifier = identifier,
-        .connectedAPI = 0
-    };
-    feasOperation(msg, FEAS_CONNECT);
-}
-/* end feas*/
 
 Surface::Surface(const sp<IGraphicBufferProducer>& bufferProducer, bool controlledByApp,
                  const sp<IBinder>& surfaceControlHandle)
@@ -1506,6 +1500,10 @@ int Surface::queueBuffer(sp<GraphicBuffer>&& buffer, int fenceFd,
                          SurfaceQueueBufferOutput* surfaceOutput) {
     ATRACE_CALL();
     SURF_LOGV("Surface::queueBuffer");
+
+    if (checkFEASEnable()) {
+        feasQueueBEG(static_cast<uint64_t>(reinterpret_cast<intptr_t>(this)));
+    }
 
     IGraphicBufferProducer::QueueBufferOutput output;
     IGraphicBufferProducer::QueueBufferInput input;
