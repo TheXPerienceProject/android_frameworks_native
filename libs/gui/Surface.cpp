@@ -54,15 +54,6 @@
 
 #include <com_android_graphics_libgui_flags.h>
 
-// QTI_BEGIN: 2025-05-13: Performance: native: detect GPU big jank
-#include "QtiExtension/QtiFenceMonitorExtension.h"
-// QTI_END: 2025-05-13: Performance: native: detect GPU big jank
-
-// QTI_BEGIN: 2024-02-29: Display: gui: set buffer dequeue duration in buffer private meta data
-#include <cutils/properties.h>
-
-// QTI_END: 2024-02-29: Display: gui: set buffer dequeue duration in buffer private meta data
-
 #include <string>
 #include <sys/ioctl.h>
 #include <fcntl.h>
