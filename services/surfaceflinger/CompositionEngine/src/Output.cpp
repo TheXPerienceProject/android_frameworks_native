@@ -992,9 +992,11 @@ void Output::writeCompositionState(const compositionengine::CompositionRefreshAr
 // QTI_END: 2023-03-06: Display: SF: Squash commit of SF Extensions.
     }
     editState().outputLayerHash = outputLayerHash;
+// QTI_BEGIN: 2023-06-15: Display: sf: extensions: Reduce instructions in SmoMo & LayerExt update
 
     QtiOutputExtension::qtiGetVisibleLayerInfo(this);
     // QTI_END
+// QTI_END: 2023-06-15: Display: sf: extensions: Reduce instructions in SmoMo & LayerExt update
 }
 
 compositionengine::OutputLayer* Output::findLayerRequestingBackgroundComposition() const {
@@ -1361,8 +1363,10 @@ void Output::updateProtectedContentState() {
                     (!FlagManager::getInstance().protected_if_client() ||
                      layer->requiresClientComposition());
         });
+// QTI_BEGIN: 2023-04-28: Display: sf: Fix secure to nonsecure transitions
 
         needsProtected = needsProtected && QtiOutputExtension::qtiIsProtectedContent(this);
+// QTI_END: 2023-04-28: Display: sf: Fix secure to nonsecure transitions
         if (needsProtected != mRenderSurface->isProtected()) {
             mRenderSurface->setProtected(needsProtected);
         }
@@ -1433,7 +1437,9 @@ std::optional<base::unique_fd> Output::composeSurfaces(
 // QTI_BEGIN: 2023-03-06: Display: SF: Squash commit of SF Extensions.
     if (mClientCompositionRequestCache
 // QTI_END: 2023-03-06: Display: SF: Squash commit of SF Extensions.
+// QTI_BEGIN: 2023-05-24: Display: CompositionEngine: Avoid disabling SF Client Composition Caching
         && (!QtiOutputExtension::qtiUseSpecFence() || mLayerRequestingBackgroundBlur != nullptr)
+// QTI_END: 2023-05-24: Display: CompositionEngine: Avoid disabling SF Client Composition Caching
         ) {
         if (mClientCompositionRequestCache->exists(tex->getBuffer()->getId(),
                                                    clientCompositionDisplay,
