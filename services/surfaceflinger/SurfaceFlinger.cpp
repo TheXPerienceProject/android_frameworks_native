@@ -3957,13 +3957,23 @@ std::pair<DisplayModes, DisplayModePtr> SurfaceFlinger::loadDisplayModes(
     DisplayModes newModes;
     for (const auto& hwcMode : hwcModes) {
         const auto id = nextModeId++;
+        auto vrrConfig = hwcMode.vrrConfig;
+
+#ifdef INJECT_MOCK_VRR_HAL
+    if (!vrrConfig.has_value() && hwcMode.vsyncPeriod < 10000000) {
+            using VrrConfigType = decltype(hwcMode.vrrConfig)::value_type;
+            VrrConfigType mockVrr;
+            mockVrr.minFrameIntervalNs = hwcMode.vsyncPeriod;
+            vrrConfig = mockVrr;
+    }
+#endif
         newModes.try_emplace(id,
                              DisplayMode::Builder(hwcMode.hwcId)
                                      .setId(id)
                                      .setPhysicalDisplayId(displayId)
                                      .setResolution({hwcMode.width, hwcMode.height})
                                      .setVsyncPeriod(hwcMode.vsyncPeriod)
-                                     .setVrrConfig(hwcMode.vrrConfig)
+                                     .setVrrConfig(vrrConfig)
                                      .setDpiX(hwcMode.dpiX)
                                      .setDpiY(hwcMode.dpiY)
                                      .setGroup(hwcMode.configGroup)
